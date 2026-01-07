@@ -218,6 +218,44 @@ const Upload: React.FC = () => {
         )}
       </section>
 
+      {/* Manual File Upload Section */}
+      <section className="bg-white border-2 border-slate-100 rounded-[2rem] p-8">
+        <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight mb-4">Manual File Upload</h2>
+        <div className="flex items-center justify-center w-full">
+          <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors">
+            <div className="flex flex-col items-center justify-center pt-5 pb-6">
+              <svg className="w-8 h-8 mb-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+              <p className="text-sm text-slate-500 font-bold">Click to upload <span className="font-normal text-slate-400">or drag and drop</span></p>
+              <p className="text-xs text-slate-400">XLSX or CSV</p>
+            </div>
+            <input id="dropzone-file" type="file" className="hidden" accept=".xlsx,.xls,.csv" onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+
+              try {
+                setStatus('LOADING');
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data);
+                const result = await processWorkbook(workbook);
+
+                db.addSyncLog({
+                  status: 'SUCCESS',
+                  message: `Manual Upload: ${result.new} New Rows Added.`
+                });
+
+                setStatus('SUCCESS');
+                setTimeout(() => setStatus('IDLE'), 3000);
+                alert(`Success! Added ${result.new} new unique records.`);
+                window.location.reload();
+              } catch (err: any) {
+                setStatus('ERROR');
+                setErrorMessage(err.message);
+              }
+            }} />
+          </label>
+        </div>
+      </section>
+
       {/* Backup & Snapshot System */}
       <section className="bg-white border-2 border-slate-100 rounded-[2rem] p-8">
         <div className="flex justify-between items-center mb-6">

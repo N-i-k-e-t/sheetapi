@@ -1,42 +1,35 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import fetch from 'node-fetch';
 
+// Native fetch (Node 18+)
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-    // CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST,OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-    }
-
-    // Expecting { url: string } in body
-    const { url } = req.body;
-
-    if (!url) {
-        return res.status(400).json({ error: 'Missing URL' });
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
 
     try {
-        console.log(`[Proxy] Fetching: ${url}`);
+        const { url } = req.body || {};
+        if (!url) throw new Error('Missing URL');
 
-        // Server-side fetch (bypasses CORS)
-        const response = await fetch(url);
+        console.log(`[Proxy] Requesting: ${url}`);
 
-        if (!response.ok) {
-            throw new Error(`Upstream error: ${response.statusText}`);
+        const upstream = await fetch(url);
+        if (!upstream.ok) throw new Error(`Google returned ${upstream.status}`);
+
+        const text = await upstream.text();
+
+        // Safety Check: Google Error Pages are usually HTML
+        if (text.includes('<!DOCTYPE html') || text.includes('<html')) {
+            throw new Error('Invalid Sheet Link (HTML returned). Make sure it is "Published to Web".');
         }
 
-        const csvText = await response.text();
-
-        // Return CSV text directly
         res.setHeader('Content-Type', 'text/csv');
-        return res.status(200).send(csvText);
+        res.status(200).send(text);
 
     } catch (error: any) {
         console.error('Proxy Error:', error);
-        return res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message });
     }
 }
