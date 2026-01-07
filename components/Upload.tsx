@@ -26,16 +26,24 @@ const Upload: React.FC = () => {
 
     if (allRows.length === 0) throw new Error("The workbook contains no data in any sheets.");
 
+
     const timestamp = new Date().toISOString();
     let insertedCount = 0;
 
-    // Use for...of to handle async saves sequentially
-    for (const row of allRows) {
-      const result = await db.saveRecordSmart({
+    // Batch Process Loop (Chunk Size: 50)
+    // This prevents browser freezing on 10k+ rows
+    const chunkSize = 50;
+    for (let i = 0; i < allRows.length; i += chunkSize) {
+      const chunk = allRows.slice(i, i + chunkSize);
+
+      // Parallelize checking for this chunk
+      const promises = chunk.map(row => db.saveRecordSmart({
         date: timestamp,
         raw_data: row
-      });
-      if (result === 'INSERTED') insertedCount++;
+      }));
+
+      const results = await Promise.all(promises);
+      insertedCount += results.filter(r => r === 'INSERTED').length;
     }
 
     setLastBatch(allRows.slice(0, 5));
