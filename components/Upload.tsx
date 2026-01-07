@@ -80,17 +80,30 @@ const Upload: React.FC = () => {
         url = `https://docs.google.com/spreadsheets/d/${sheetIdInput}/export?format=csv`;
       }
 
-      console.log("Fetching: ", url);
-      const response = await fetch(url);
+      console.log("Fetching via Proxy: ", url);
 
-      if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+      // Use our own Vercel Proxy to bypass Google CORS
+      const proxyResponse = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
 
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('text/html')) throw new Error("Sheet not 'Published to Web' as CSV.");
+      if (!proxyResponse.ok) throw new Error(`Proxy failed: ${proxyResponse.status}`);
 
-      const arrayBuffer = await response.arrayBuffer();
-      const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
+      const csvText = await proxyResponse.text();
+
+      // Check for HTML error pages
+      if (csvText.includes('<!DOCTYPE html') || csvText.includes('<html')) {
+        throw new Error("Invalid Link. Ensure Sheet is 'Published to Web' as CSV.");
+      }
+
+      // Convert CSV Text -> Workbook
+      const workbook = XLSX.read(csvText, { type: 'string' });
+      // const response = await fetch(url); // Old Direct Fetch logic replaced
       const result = await processWorkbook(workbook);
+
+
 
       const endTime = performance.now();
 
