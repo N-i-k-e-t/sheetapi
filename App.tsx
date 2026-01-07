@@ -34,11 +34,16 @@ const App: React.FC = () => {
           url = `https://docs.google.com/spreadsheets/d/${settings.googleSheetId}/export?format=csv`;
         }
 
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Auto-sync fetch failed.");
+        const res = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
 
-        const buffer = await res.arrayBuffer();
-        const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+        if (!res.ok) throw new Error("Auto-sync proxy failed.");
+
+        const csvText = await res.text();
+        const workbook = XLSX.read(csvText, { type: 'string' });
 
         const timestamp = new Date().toISOString();
         const todayStr = timestamp.split('T')[0];
