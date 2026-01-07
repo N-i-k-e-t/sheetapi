@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as XLSX from 'xlsx';
 import { db, AppSettings, BackupEntry, ApiCallLog } from '../services/db';
 import { ExcelRecord } from '../types';
@@ -19,6 +19,8 @@ const Dashboard: React.FC = () => {
   const [sheetId, setSheetId] = useState(settings.googleSheetId);
   const [syncTime, setSyncTime] = useState(settings.syncTime || '13:00');
   const [manualRow, setManualRow] = useState<string>('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initial Data Load
   useEffect(() => {
@@ -81,6 +83,53 @@ const Dashboard: React.FC = () => {
       alert(e.message);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    const start = performance.now();
+    let count = 0;
+    let skipped = 0;
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
+      const ts = new Date().toISOString();
+
+      await db.createBackup('Pre-Upload Backup');
+
+      // Process all sheets
+      for (const name of workbook.SheetNames) {
+        const json = XLSX.utils.sheet_to_json(workbook.Sheets[name]);
+        for (const row of json) {
+          // Use saveRecordSmart to avoid duplicates
+          const res = await db.saveRecordSmart({ date: ts, raw_data: row });
+          if (res === 'INSERTED') count++;
+          else if (res === 'SKIPPED') skipped++;
+        }
+      }
+
+      const dur = Math.round(performance.now() - start);
+      db.addSyncLog({
+        status: 'SUCCESS',
+        message: `Uploaded ${count} items from ${file.name} (+${skipped} skipped).`,
+        duration: dur
+      });
+
+      await refreshState();
+      alert(`Success! Added ${count} new records.\n(${skipped} duplicates were automatically skipped)`);
+
+    } catch (e: any) {
+      console.error(e);
+      db.addSyncLog({ status: 'ERROR', message: `Upload Failed: ${e.message}` });
+      alert("Upload Failed. Please check the file format.");
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
@@ -180,6 +229,19 @@ const Dashboard: React.FC = () => {
                         {isSyncing ? 'Running...' : 'Run Sync'}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Manual Upload Section */}
+                  <div className="border-t-2 border-slate-200 pt-6 mt-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase mb-3 block">Or Batch Upload (.xlsx)</label>
+                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept=".xlsx, .xls, .csv" className="hidden" />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isUploading}
+                      className={`w-full py-4 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 transition-all ${isUploading ? 'bg-slate-50 border-slate-300' : 'bg-white border-indigo-200 hover:border-indigo-400 hover:bg-slate-50'}`}
+                    >
+                      {isUploading ? <span className="text-[10px] font-bold text-slate-500 animate-pulse">Processing...</span> : <span className="text-[10px] font-bold text-indigo-600 uppercase">Select Local File</span>}
+                    </button>
                   </div>
                 </div>
               </div>
