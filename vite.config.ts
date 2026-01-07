@@ -12,6 +12,16 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            // Split heavy dependencies into separate chunks
+            vendor_react: ['react', 'react-dom'],
+            vendor_xlsx: ['xlsx'],
+            vendor_supabase: ['@supabase/supabase-js'],
+          }
+        }
+      }
     },
     plugins: [react()],
     define: {
