@@ -116,12 +116,12 @@ const Dashboard: React.FC = () => {
       const dur = Math.round(performance.now() - start);
       db.addSyncLog({
         status: 'SUCCESS',
-        message: `Uploaded ${count} items from ${file.name} (+${skipped} skipped).`,
+        message: `Uploaded ${count} items from ${file.name} (+${skipped} skipped) in ${dur}ms`,
         duration: dur
       });
 
       await refreshState();
-      alert(`Success! Added ${count} new records.\n(${skipped} duplicates were automatically skipped)`);
+      alert(`Success! Added ${count} new records in ${dur}ms.\n(${skipped} duplicates were automatically skipped)`);
 
     } catch (e: any) {
       console.error(e);
