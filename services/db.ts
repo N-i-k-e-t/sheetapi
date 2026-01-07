@@ -155,10 +155,11 @@ export const db = {
   getSettings: (): AppSettings => {
     const data = localStorage.getItem(SETTINGS_KEY);
     return data ? JSON.parse(data) : {
-      googleSheetId: '',
+      // HARDCODED DEFAULT for 1-Time Setup
+      googleSheetId: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQIuP1xAtduinmoqrQvCLHI-8AGqtLY2t4dLZc3nFeoRKKjnYhCxQDqDt2hY-Jq5A/pub?output=csv',
       lastSync: null,
       autoSync: true,
-      syncTime: '13:00',
+      syncTime: '09:00', // Auto-set to 9 AM
       lastScheduledSyncDate: null,
       syncLogs: []
     };

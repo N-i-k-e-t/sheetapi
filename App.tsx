@@ -25,7 +25,15 @@ const App: React.FC = () => {
 
       setIsSyncing(true);
       try {
-        const url = `https://docs.google.com/spreadsheets/d/${settings.googleSheetId}/export?format=csv`;
+        let url = '';
+        if (settings.googleSheetId.startsWith('http')) {
+          url = settings.googleSheetId
+            .replace('/pubhtml', '/pub?output=csv')
+            .replace('/edit', '/export?format=csv');
+        } else {
+          url = `https://docs.google.com/spreadsheets/d/${settings.googleSheetId}/export?format=csv`;
+        }
+
         const res = await fetch(url);
         if (!res.ok) throw new Error("Auto-sync fetch failed.");
 

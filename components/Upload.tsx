@@ -52,8 +52,9 @@ const Upload: React.FC = () => {
   };
 
   const syncGoogleSheet = async () => {
-    if (!sheetIdInput || sheetIdInput.trim().length < 10) {
-      setErrorMessage("Invalid Sheet ID.");
+    // Validation: Check if input exists. We accept IDs or Full URLs now.
+    if (!sheetIdInput || sheetIdInput.trim().length < 5) {
+      setErrorMessage("Invalid Input.");
       setStatus('ERROR');
       return;
     }
@@ -61,7 +62,25 @@ const Upload: React.FC = () => {
     const startTime = performance.now();
     setStatus('LOADING');
     try {
-      const url = `https://docs.google.com/spreadsheets/d/${sheetIdInput}/export?format=csv`;
+      // SMART URL BUILDER
+      let url = '';
+      if (sheetIdInput.startsWith('http')) {
+        // User pasted full URL (e.g. 2PACX)
+        // If it's a "pubhtml" or "edit", force it to CSV
+        url = sheetIdInput
+          .replace('/pubhtml', '/pub?output=csv')
+          .replace('/edit', '/export?format=csv');
+
+        // Fallback if no specific ending found but it is a 2PACX
+        if (!url.includes('output=csv') && !url.includes('format=csv')) {
+          if (url.includes('pub')) url += '?output=csv';
+        }
+      } else {
+        // User pasted just an ID
+        url = `https://docs.google.com/spreadsheets/d/${sheetIdInput}/export?format=csv`;
+      }
+
+      console.log("Fetching: ", url);
       const response = await fetch(url);
 
       if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
