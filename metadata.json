@@ -1,0 +1,5 @@
+{
+  "name": "SheetAPI: Excel-to-JSON Gateway",
+  "description": "A simple internal tool to convert Marathi-supported Excel sheets into a secure JSON API with a single master key.",
+  "requestFramePermissions": []
+}
